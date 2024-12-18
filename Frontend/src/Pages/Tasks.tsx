@@ -1,10 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import axios from "axios";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { IoTrashBin } from "react-icons/io5";
 import { FaCheck } from "react-icons/fa";
+import { useGetTasks } from "../api/use-get-tasks";
+import useUpdateTask from "../api/use-update-task";
+import useDeleteTask from "../api/use-delete-task";
 
 const zCreateTaskSchema = z.object({
   taskName: z.string().min(1),
@@ -13,6 +15,10 @@ const zCreateTaskSchema = z.object({
 
 const Tasks = () => {
   const [status, setStatus] = useState<"to do" | "completed">("to do");
+
+  const { mutateAsync: updateTask } = useUpdateTask();
+
+  const { mutateAsync: deleteTask } = useDeleteTask();
 
   const {
     register,
@@ -27,54 +33,18 @@ const Tasks = () => {
     resolver: zodResolver(zCreateTaskSchema),
   });
 
-  const [tasks, setTasks] = useState<string[]>([]);
+  type TaskData = z.infer<typeof zCreateTaskSchema>;
 
-  useEffect(() => {
-    getTasks();
-  }, []);
-
-  const onSubmit = handleSubmit((data) => {
-    console.log(data);
-    addNewTask(data);
+  const onSubmit = handleSubmit((data: TaskData) => {
+    updateTask(data);
     reset();
   });
 
-  type TaskData = z.infer<typeof zCreateTaskSchema>;
+  const { data, isLoading } = useGetTasks();
 
-  const addNewTask = async (data: TaskData) => {
+  const handleDelete = async (taskId: string) => {
     try {
-      const res = await axios.post("http://localhost:3005/api/tasks", {
-        taskName: data.taskName,
-        taskDescription: data.taskDescription,
-      });
-      getTasks();
-      console.log(res);
-    } catch (error) {
-      console.log("couldnot add task", error);
-    }
-  };
-
-  const getTasks = async () => {
-    try {
-      const tasks = await axios.get("http://localhost:3005/api/tasks");
-      setTasks(tasks.data);
-      console.log(tasks);
-    } catch (error) {
-      console.log("error fetching tasks");
-    }
-  };
-
-  const deleteTask = async (taskId: string) => {
-    try {
-      setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
-      const response = await axios.delete(
-        `http://localhost:3005/api/tasks/${taskId}` // Fix: Replace taskId dynamically
-      );
-      // console.log("Task deleted successfully:", response);
-      // console.log(response);
-      // console.log(taskId, tasks);
-      // setTasks((tasks) => tasks?.filter((task) => task._id !== taskId));
-      getTasks();
+      deleteTask(taskId);
     } catch (error) {
       console.log("Error deleting task:", error);
     }
@@ -133,8 +103,8 @@ const Tasks = () => {
             Task List
           </h2>
           <div className=" mt-8">
-            {tasks?.length > 0 ? (
-              tasks?.map((task) => (
+            {data?.length > 0 ? (
+              data?.map((task) => (
                 <div
                   key={task._id}
                   className="bg-gray-300 px-2 py-1 flex justify-between items-center text-[14px] rounded-sm my-2"
@@ -157,7 +127,7 @@ const Tasks = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => deleteTask(task._id)}
+                      onClick={() => handleDelete(task._id)}
                       className="bg-[#f23838] h-[30px] px-2 py-1 rounded-lg text-white text-[14px]"
                     >
                       <i>

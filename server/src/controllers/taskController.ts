@@ -49,6 +49,7 @@ export const getTasks = async (req: Request, res: Response) => {
 // Delete a task
 export const deleteTask = async (req: Request, res: Response) => {
   const { taskId } = req.params;
+  console.log(taskId);
 
   try {
     const task = await Task.findByIdAndDelete(taskId);
